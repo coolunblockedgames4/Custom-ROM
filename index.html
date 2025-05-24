@@ -2,68 +2,93 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Play ROM in Browser</title>
+  <title>EmulatorJS ROM Loader</title>
   <style>
-    body { font-family: sans-serif; text-align: center; }
-    #emulator { width: 100%; height: 600px; border: none; }
-    #dropZone {
-      margin: 20px;
-      padding: 40px;
-      border: 3px dashed #aaa;
-      border-radius: 10px;
-      cursor: pointer;
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    #game {
+      width: 640px;
+      height: 480px;
+      margin: 20px auto;
+      background: #111;
+    }
+    #upload {
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <h1>Play Your ROM File</h1>
-  <div id="dropZone">Drag & Drop ROM File Here or Click to Select</div>
-  <input type="file" id="fileInput" style="display:none;" />
-  <iframe id="emulator" src="" allowfullscreen></iframe>
+  <h1>Load Your ROM</h1>
+  <input type="file" id="upload" accept=".z64,.n64,.v64,.nes,.snes,.gba,.gb,.gbc,.bin,.iso,.cue,.img">
+  <div id="game"></div>
 
+  <script src="https://www.emulatorjs.com/loader.js"></script>
   <script>
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
-    const emulatorFrame = document.getElementById('emulator');
-
-    const systemMap = {
-      'nes': 'nes',
-      'smc': 'snes', 'sfc': 'snes',
-      'gba': 'gba', 'gbc': 'gbc', 'gb': 'gb',
-      'n64': 'n64', 'z64': 'n64', 'v64': 'n64',
-      'gen': 'sega', 'smd': 'sega',
-    };
-
-    function getSystemFromExtension(filename) {
-      const ext = filename.split('.').pop().toLowerCase();
-      return systemMap[ext] || null;
-    }
-
-    function loadROM(file) {
-      const system = getSystemFromExtension(file.name);
-      if (!system) {
-        alert("Unsupported ROM file type.");
-        return;
-      }
+    const upload = document.getElementById('upload');
+    upload.addEventListener('change', function () {
+      const file = this.files[0];
+      if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = btoa(reader.result);
-        const url = `https://www.emulatorjs.com/loader.html#${system},data:application/octet-stream;base64,${base64}`;
-        emulatorFrame.src = url;
+      reader.onload = function (e) {
+        const arrayBuffer = e.target.result;
+        const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+
+        const extension = file.name.split('.').pop().toLowerCase();
+        let core = '';
+
+        switch (extension) {
+          case 'z64':
+          case 'n64':
+          case 'v64':
+            core = 'n64';
+            break;
+          case 'nes':
+            core = 'nes';
+            break;
+          case 'sfc':
+          case 'smc':
+          case 'snes':
+            core = 'snes';
+            break;
+          case 'gba':
+            core = 'gba';
+            break;
+          case 'gb':
+            core = 'gb';
+            break;
+          case 'gbc':
+            core = 'gbc';
+            break;
+          case 'bin':
+          case 'iso':
+          case 'cue':
+          case 'img':
+            core = 'psx';
+            break;
+          default:
+            alert('Unsupported file type: ' + extension);
+            return;
+        }
+
+        EJS_player = '#game';
+        EJS_core = core;
+        EJS_gameUrl = url;
+        EJS_pathtodata = 'data/';
+        EJS_startOnLoaded = true;
+
+        const script = document.createElement('script');
+        script.src = 'https://www.emulatorjs.com/loader.js';
+        document.body.appendChild(script);
       };
-      reader.readAsBinaryString(file);
-    }
-
-    dropZone.onclick = () => fileInput.click();
-    fileInput.onchange = e => {
-      if (e.target.files.length) loadROM(e.target.files[0]);
-    };
-
-    dropZone.addEventListener('dragover', e => e.preventDefault());
-    dropZone.addEventListener('drop', e => {
-      e.preventDefault();
-      if (e.dataTransfer.files.length) loadROM(e.dataTransfer.files[0]);
+      reader.readAsArrayBuffer(file);
     });
   </script>
 </body>
